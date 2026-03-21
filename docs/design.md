@@ -12,14 +12,54 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 - Deploy: Docker Compose cho môi trường dev/UAT.
 
 ## 3. Project Structure (MVP)
-- Monorepo mức ứng dụng:
-  - `frontend/`: Next.js app, có `Dockerfile` riêng.
-  - `backend/`: FastAPI app, có `Dockerfile` riêng.
-  - `docker-compose.yml`: đặt ở root để orchestration toàn bộ services.
-  - `docs/`: tài liệu thiết kế và vận hành.
-- Nguyên tắc:
-  - Mỗi service tự quản lý dependencies/build image trong folder của mình.
-  - Compose ở root chịu trách nhiệm wiring network, env vars, volumes, startup order.
+- Cấu trúc đề xuất:
+  ```text
+  front-desk-assistant/
+  ├─ frontend/                    # Next.js app (kiosk + operator UI)
+  │  ├─ src/
+  │  │  ├─ app/                   # App Router pages/layouts
+  │  │  ├─ components/            # UI components dùng chung
+  │  │  ├─ features/              # Module theo nghiệp vụ (ticket, lookup, payment)
+  │  │  ├─ lib/                   # API client, utils, constants
+  │  │  └─ styles/
+  │  ├─ public/
+  │  ├─ package.json
+  │  ├─ Dockerfile
+  │  └─ .env.example
+  ├─ backend/                     # FastAPI app
+  │  ├─ app/
+  │  │  ├─ api/v1/                # Router endpoints
+  │  │  ├─ core/                  # Config, security, settings
+  │  │  ├─ models/                # SQLAlchemy models
+  │  │  ├─ schemas/               # Pydantic schemas
+  │  │  ├─ services/              # Business logic
+  │  │  ├─ repositories/          # Data access layer
+  │  │  ├─ db/                    # Session, base, migrations integration
+  │  │  └─ main.py                # FastAPI entrypoint
+  │  ├─ alembic/
+  │  ├─ tests/
+  │  ├─ requirements.txt
+  │  ├─ Dockerfile
+  │  └─ .env.example
+  ├─ infra/
+  │  ├─ postgres/
+  │  │  └─ init.sql               # Optional bootstrap SQL cho local
+  │  └─ redis/
+  ├─ docs/
+  │  ├─ prd.md
+  │  └─ design.md
+  ├─ docker-compose.yml           # Orchestration cho frontend/backend/postgres/redis
+  ├─ .env.example                 # Shared env keys cho compose
+  ├─ Makefile                     # Shortcut lệnh local (up, down, logs, migrate)
+  └─ README.md
+  ```
+- Quy ước trách nhiệm:
+  - `frontend/` và `backend/` tự quản lý dependency, build image, và test của từng service.
+  - `docker-compose.yml` ở root chỉ làm nhiệm vụ orchestration: network, volume, env injection, startup order.
+  - Biến môi trường tách 2 lớp:
+    - Root `.env` cho compose-level (`POSTGRES_*`, `REDIS_*`, `BACKEND_PORT`, `FRONTEND_PORT`).
+    - Service `.env` cho app-level (`DATABASE_URL`, `REDIS_URL`, `PAYMENT_WEBHOOK_SECRET`, `NEXT_PUBLIC_API_BASE_URL`).
+  - Migration chạy từ backend container trước khi API serve traffic.
 
 ## 4. Service Boundaries
 - Ticket Service:
@@ -153,4 +193,3 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 - Chọn payment gateway cụ thể và format webhook.
 - TTL cho `payment_intent` (ví dụ 15 phút hay 30 phút).
 - Cơ chế đối soát cuối ngày (batch job hay dashboard realtime).
-
