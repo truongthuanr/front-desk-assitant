@@ -11,7 +11,17 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 - External integration: Payment Gateway (hosted payment + webhook).
 - Deploy: Docker Compose cho môi trường dev/UAT.
 
-## 3. Service Boundaries
+## 3. Project Structure (MVP)
+- Monorepo mức ứng dụng:
+  - `frontend/`: Next.js app, có `Dockerfile` riêng.
+  - `backend/`: FastAPI app, có `Dockerfile` riêng.
+  - `docker-compose.yml`: đặt ở root để orchestration toàn bộ services.
+  - `docs/`: tài liệu thiết kế và vận hành.
+- Nguyên tắc:
+  - Mỗi service tự quản lý dependencies/build image trong folder của mình.
+  - Compose ở root chịu trách nhiệm wiring network, env vars, volumes, startup order.
+
+## 4. Service Boundaries
 - Ticket Service:
   - Tạo ticket theo khoa.
   - Quản lý thứ tự queue theo ngày.
@@ -25,8 +35,8 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 - Audit Service (module dùng chung):
   - Lưu hành động operator và thay đổi trạng thái payment.
 
-## 4. Data Model (MVP)
-### 4.1 Core tables
+## 5. Data Model (MVP)
+### 5.1 Core tables
 - `queues`
   - `id`, `code`, `name`, `is_active`
 - `tickets`
@@ -43,7 +53,7 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 - `audit_logs`
   - `id`, `actor_type`, `actor_id`, `action`, `resource_type`, `resource_id`, `metadata_json`, `created_at`
 
-### 4.2 Constraints and indexes
+### 5.2 Constraints and indexes
 - `tickets` unique: (`queue_id`, `queue_date`, `queue_number`).
 - `tickets` unique: `request_id`.
 - `orders` unique: `ticket_id` (MVP: 1 ticket -> 1 order).
@@ -54,31 +64,31 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
   - `orders(status)`
   - `payment_intents(order_id, status)`
 
-## 5. State Machines
-### 5.1 Order state
+## 6. State Machines
+### 6.1 Order state
 - `draft` -> `open`: có ít nhất 1 `order_item`.
 - `open` -> `partially_paid`: có thanh toán thành công nhưng `paid_amount < total_amount`.
 - `open|partially_paid` -> `paid`: `paid_amount >= total_amount`.
 - `draft|open` -> `cancelled`: bị hủy trước khi hoàn tất.
 
-### 5.2 Payment intent state
+### 6.2 Payment intent state
 - `pending` -> `success`: gateway xác nhận thành công.
 - `pending` -> `failed`: gateway trả thất bại.
 - `pending` -> `expired`: quá hạn thanh toán.
 - Trạng thái `success|failed|expired` là terminal, không chuyển tiếp.
 
-## 6. API Design (Draft)
-### 6.1 Ticket
+## 7. API Design (Draft)
+### 7.1 Ticket
 - `POST /api/v1/tickets`
   - Input: `request_id`, `queue_code`, `user_info`, `operator_routing` (optional)
   - Output: `ticket_code`, `queue_position`, `order_id`
   - Rule: idempotent theo `request_id`.
 
-### 6.2 Lookup
+### 7.2 Lookup
 - `GET /api/v1/lookup/poi?q=...`
 - `GET /api/v1/lookup/services?q=...`
 
-### 6.3 Payment
+### 7.3 Payment
 - `POST /api/v1/orders/{order_id}/items`
   - Add service phát sinh, recalc `total_amount`.
 - `POST /api/v1/orders/{order_id}/payment-intents`
@@ -88,15 +98,15 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 - `POST /api/v1/payments/webhook`
   - Nhận event gateway, update `payment_intent`, ghi `payment_events`, recalc order.
 
-## 7. Sequence Flows
-### 7.1 Create ticket
+## 8. Sequence Flows
+### 8.1 Create ticket
 1. Client gửi `POST /tickets` kèm `request_id`.
 2. Backend check `request_id` đã tồn tại chưa.
 3. Nếu chưa có: tăng queue counter theo `queue_id + date`, tạo ticket.
 4. Backend tạo `order` trạng thái `draft` cho ticket.
 5. Trả ticket + order về client.
 
-### 7.2 Add service and pay
+### 8.2 Add service and pay
 1. Operator/backend thêm `order_item` vào order.
 2. Backend chuyển order `draft -> open` (nếu cần), tính lại tiền.
 3. User bấm thanh toán, backend tạo `payment_intent (pending)`.
@@ -105,7 +115,7 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 6. Backend upsert `payment_events` (idempotent), update intent.
 7. Backend cập nhật `paid_amount` và trạng thái order.
 
-## 8. Concurrency, Idempotency, Reliability
+## 9. Concurrency, Idempotency, Reliability
 - Queue counter:
   - Dùng Redis atomic increment theo key `queue:{queue_id}:{yyyy-mm-dd}`.
   - Commit ticket vào Postgres với unique constraint để chặn race condition.
@@ -117,7 +127,7 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 - Consistency:
   - Cập nhật `payment_intent`, `payment_events`, `orders.paid_amount/status` trong cùng DB transaction.
 
-## 9. Security and Audit
+## 10. Security and Audit
 - AuthN/AuthZ theo role `user`/`operator`.
 - Validate chữ ký webhook từ payment gateway.
 - Không lưu dữ liệu thẻ thanh toán trong hệ thống nội bộ.
@@ -125,7 +135,7 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
   - Điều hướng khoa bởi operator.
   - Thay đổi trạng thái `payment_intent` và `order`.
 
-## 10. Observability
+## 11. Observability
 - Metrics:
   - `ticket_create_latency_ms`
   - `ticket_create_error_total`
@@ -134,12 +144,13 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
   - `payment_webhook_duplicate_total`
 - Structured logging với `request_id`, `ticket_id`, `order_id`, `payment_intent_id`.
 
-## 11. Deployment Notes (MVP)
+## 12. Deployment Notes (MVP)
 - `docker-compose.yml` tối thiểu gồm: `frontend`, `backend`, `postgres`, `redis`.
 - Migration DB chạy trước backend startup.
 - Tách config qua env vars: DB URL, Redis URL, webhook secret, gateway keys.
 
-## 12. Open Technical Decisions
+## 13. Open Technical Decisions
 - Chọn payment gateway cụ thể và format webhook.
 - TTL cho `payment_intent` (ví dụ 15 phút hay 30 phút).
 - Cơ chế đối soát cuối ngày (batch job hay dashboard realtime).
+
