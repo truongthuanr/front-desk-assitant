@@ -1,4 +1,6 @@
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 const serviceCards = [
   { title: "Dang ky\nkham benh", icon: "🗓️", primary: true },
@@ -51,29 +53,27 @@ export default function HomePage() {
 
           <div className="service-grid">
             {serviceCards.map((card) => (
-              <button
-                key={card.title}
-                type="button"
-                className={`service-card ${card.primary ? "service-card-primary" : ""}`}
-              >
-                <span className="service-icon" aria-hidden="true">
-                  {card.icon}
-                </span>
-                <span className="service-title">{card.title}</span>
-              </button>
+              <Card key={card.title} className={`service-card ${card.primary ? "service-card-primary" : ""}`}>
+                <Button type="button" variant="ghost" className="service-card-button">
+                  <span className="service-icon" aria-hidden="true">
+                    {card.icon}
+                  </span>
+                  <span className="service-title">{card.title}</span>
+                </Button>
+              </Card>
             ))}
           </div>
 
           <div className="quick-actions">
-            <button type="button" className="pill">
+            <Button type="button" variant="secondary" className="pill">
               💬 Tro chuyen truc tiep
-            </button>
-            <button type="button" className="pill">
+            </Button>
+            <Button type="button" variant="secondary" className="pill">
               🌐 Ngon ngu
-            </button>
-            <button type="button" className="pill emergency">
+            </Button>
+            <Button type="button" variant="destructive" className="pill emergency">
               📞 Ho tro khan cap
-            </button>
+            </Button>
           </div>
         </section>
       </section>
