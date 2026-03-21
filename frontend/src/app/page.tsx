@@ -1,65 +1,82 @@
 import Image from "next/image";
 
-export default function Home() {
+const serviceCards = [
+  { title: "Dang ky\nkham benh", icon: "🗓️", primary: true },
+  { title: "Tra cuu\nlich hen", icon: "🕒" },
+  { title: "So do\nbenh vien", icon: "📍" },
+  { title: "Giai dap\nthac mac", icon: "🎙️" },
+];
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
+    <main className="home-shell">
+      <section className="home-canvas">
         <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
+          src="/assets/leaf.png"
+          alt=""
+          width={480}
+          height={320}
+          className="leaf leaf-top"
           priority
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+        <Image
+          src="/assets/leaf.png"
+          alt=""
+          width={430}
+          height={280}
+          className="leaf leaf-bottom"
+        />
+
+        <aside className="left-panel">
+          <div className="brand">
+            <Image src="/assets/logo.png" alt="Hospital Assistant logo" width={72} height={72} />
+            <p className="brand-text">Hospital Assistant</p>
+          </div>
+          <h1 className="headline">
+            Xin chao!
+            <br />
+            Toi co the giup
+            <br />
+            gi cho ban
+            <br />
+            hom nay?
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        </aside>
+
+        <section className="right-panel" aria-label="Main services">
+          <header className="hero">
+            <p className="bubble">Hay chon dich vu hoac tro chuyen voi toi.</p>
+            <Image src="/assets/robot.png" alt="Hospital assistant robot" width={320} height={420} className="robot" />
+          </header>
+
+          <div className="service-grid">
+            {serviceCards.map((card) => (
+              <button
+                key={card.title}
+                type="button"
+                className={`service-card ${card.primary ? "service-card-primary" : ""}`}
+              >
+                <span className="service-icon" aria-hidden="true">
+                  {card.icon}
+                </span>
+                <span className="service-title">{card.title}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="quick-actions">
+            <button type="button" className="pill">
+              💬 Tro chuyen truc tiep
+            </button>
+            <button type="button" className="pill">
+              🌐 Ngon ngu
+            </button>
+            <button type="button" className="pill emergency">
+              📞 Ho tro khan cap
+            </button>
+          </div>
+        </section>
+      </section>
+    </main>
   );
 }
