@@ -30,14 +30,9 @@ Request
 ```json
 {
   "request_id": "req_8d6b9c0e",
-  "queue_code": "KHAM_NOI",
   "user_info": {
     "name": "Nguyen Van A",
     "phone": "0900000000"
-  },
-  "operator_routing": {
-    "operator_id": "op_001",
-    "note": "Routing by symptoms"
   }
 }
 ```
@@ -46,9 +41,18 @@ Success `201`
 ```json
 {
   "ticket_id": "tkt_01",
-  "ticket_code": "KHAM_NOI-20260318-0042",
-  "queue_name": "Kham Noi",
-  "queue_position": 42,
+  "ticket_code": "GEN-20260318-0042",
+  "subject_ref": "usr_01",
+  "general_queue": {
+    "queue_code": "GENERAL",
+    "queue_name": "General Intake Queue",
+    "queue_number": 42,
+    "queue_position": 42
+  },
+  "routing": {
+    "status": "unrouted",
+    "clinic_queue": null
+  },
   "created_at": "2026-03-18T09:00:00Z",
   "order": {
     "order_id": "ord_01",
@@ -61,10 +65,53 @@ Idempotent replay `200`
 - Khi `request_id` đã tồn tại, trả lại đúng payload ticket đã tạo trước đó.
 
 Errors
-- `404 QUEUE_NOT_FOUND`
-- `409 QUEUE_INACTIVE`
+- `403 FORBIDDEN_CHANNEL`
 - `422 INVALID_REQUEST`
 - `503 QUEUE_COUNTER_UNAVAILABLE`
+
+### 4.2 Route ticket to clinic queue (Operator)
+- `PUT /tickets/{ticket_id}/routing`
+
+Request
+```json
+{
+  "to_queue_code": "KHAM_NOI",
+  "operator_id": "op_001",
+  "note": "Routing by symptoms"
+}
+```
+
+Success `200`
+```json
+{
+  "ticket_id": "tkt_01",
+  "ticket_code": "GEN-20260318-0042",
+  "general_queue": {
+    "queue_code": "GENERAL",
+    "queue_name": "General Intake Queue",
+    "queue_number": 42
+  },
+  "routing": {
+    "status": "routed",
+    "clinic_queue": {
+      "queue_code": "KHAM_NOI",
+      "queue_name": "Kham Noi",
+      "clinic_queue_number": 6
+    },
+    "routed_at": "2026-03-18T09:02:00Z"
+  }
+}
+```
+
+Notes
+- Cho phép re-route (chỉnh lại điều hướng). Mỗi lần route vào queue đích mới sẽ cấp `clinic_queue_number` mới theo ngày ở queue đó.
+- Audit log bắt buộc cho mọi request route/re-route.
+
+Errors
+- `404 TICKET_NOT_FOUND`
+- `404 DEST_QUEUE_NOT_FOUND`
+- `409 DEST_QUEUE_INACTIVE`
+- `422 INVALID_ROUTING_REQUEST`
 
 ## 5. Lookup APIs
 ### 5.1 Search POI
@@ -250,9 +297,11 @@ Errors
 ## 8. Status Enums
 - `order.status`: `draft`, `open`, `partially_paid`, `paid`, `cancelled`
 - `payment_intent.status`: `pending`, `success`, `failed`, `expired`
+- `ticket.routing.status`: `unrouted`, `routed`
 
 ## 9. Idempotency Rules
 - `POST /tickets`: idempotent bởi `request_id` trong body.
+- `PUT /tickets/{ticket_id}/routing`: khuyến nghị idempotent bởi `X-Request-Id` để chống gửi lặp thao tác route từ UI.
 - `POST /payments/webhook`: idempotent bởi `provider_event_id`.
 - `POST /orders/{order_id}/payment-intents`: idempotent mềm qua `X-Idempotency-Key` (khuyến nghị).
 

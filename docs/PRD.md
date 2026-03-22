@@ -25,7 +25,7 @@ Quy trình tiếp nhận tại quầy hiện tốn thời gian, dễ ùn tắc, 
 
 ## 4. Scope
 ### 4.1 In Scope (MVP)
-- Issue ticket theo khoa/điểm tiếp nhận (kiosk-only).
+- Issue ticket vào `general queue` tại kiosk (kiosk-only).
 - Operator điều hướng user sang khoa phù hợp.
 - Information lookup cho POI và thông tin dịch vụ cơ bản.
 - Ticket lookup public qua `ticket_code` + `phone` + OTP cho guest.
@@ -55,10 +55,11 @@ Quy trình tiếp nhận tại quầy hiện tốn thời gian, dễ ùn tắc, 
 ## 6. User Flows (MVP)
 ### 6.1 Issue Ticket
 1. User thao tác trên kiosk, nhập thông tin cơ bản và chọn nhu cầu.
-2. Hệ thống xác định khoa/điểm tiếp nhận phù hợp.
-3. Hệ thống sinh `user_ref`, gán `subject_ref = user_ref`.
-4. Hệ thống tạo ticket theo queue của khoa trong ngày, gắn với `subject_ref`.
-5. User nhận mã ticket và vị trí hiện tại trong hàng đợi.
+2. Hệ thống sinh `user_ref`, gán `subject_ref = user_ref`.
+3. Hệ thống tạo ticket vào `general queue` trong ngày, gắn với `subject_ref`.
+4. User nhận mã ticket và vị trí hiện tại trong `general queue`.
+5. Operator điều hướng ticket sang khoa/queue đích.
+6. Khi điều hướng, hệ thống cấp số thứ tự theo queue đích (theo ngày) và cập nhật trạng thái hiển thị cho user.
 
 ### 6.2 Information Lookup
 1. User nhập từ khóa hoặc chọn danh mục.
@@ -82,16 +83,19 @@ Quy trình tiếp nhận tại quầy hiện tốn thời gian, dễ ùn tắc, 
 
 ## 7. Functional Requirements
 ### FR-01 Issue Ticket
-- Hệ thống phải cấp số thứ tự theo từng khoa/queue riêng.
-- Số thứ tự tăng tuần tự theo ngày.
+- Hệ thống phải tạo ticket vào `general queue` và cấp số thứ tự trong `general queue`.
+- Số thứ tự trong `general queue` tăng tuần tự theo ngày.
 - Cùng một `request_id` chỉ được tạo tối đa một ticket (idempotency).
 - Ticket phải lưu `subject_ref` để liên kết user xuyên suốt các module.
-- Trả về mã ticket, queue name, vị trí trong hàng đợi, thời điểm tạo.
+- Trả về mã ticket, `general_queue_name`, vị trí trong `general queue`, thời điểm tạo.
 - API tạo ticket chỉ cho phép từ channel kiosk với kiosk credential hợp lệ; channel khác trả `403`.
 
 ### FR-02 Operator Routing
-- Operator có thể chọn/chỉnh khoa đích cho user trước khi tạo ticket.
-- Lưu audit log cho thao tác điều hướng.
+- Operator có thể điều hướng ticket đã tạo từ `general queue` sang queue khoa/phòng đích.
+- Khi điều hướng, hệ thống phải cấp `clinic_queue_number` tăng tuần tự theo ngày trong queue đích.
+- Một queue đích có thể nhận ticket không liên tục theo thứ tự ticket gốc (ví dụ: 1,3,6).
+- Hệ thống phải lưu cả `general_queue_number` và `clinic_queue_number` để truy vết.
+- Lưu audit log bắt buộc cho mọi thao tác điều hướng/chỉnh lại điều hướng (from_queue, to_queue, operator_id, thời điểm).
 
 ### FR-03 Information Lookup
 - Tìm kiếm POI theo tên/từ khóa.
@@ -136,10 +140,10 @@ Quy trình tiếp nhận tại quầy hiện tốn thời gian, dễ ùn tắc, 
 - External: Payment Gateway (TBD).
 
 ## 10. Acceptance Criteria (MVP Exit)
-- Có thể cấp ticket thành công theo khoa và không trùng ticket do request lặp.
+- Có thể cấp ticket thành công vào `general queue` và không trùng ticket do request lặp.
 - Mọi ticket đều có `subject_ref = user_ref` để trace xuyên suốt.
 - API tạo ticket chỉ hoạt động với kiosk credential hợp lệ; request ngoài kiosk bị từ chối `403`.
-- Operator điều hướng được user và có audit log.
+- Operator điều hướng được ticket từ `general queue` sang queue đích, có cấp số theo queue đích và có audit log.
 - User tra cứu được POI và thông tin dịch vụ cơ bản.
 - User tra cứu được ticket từ public page bằng `ticket_code` + `phone` + OTP.
 - Tạo được `order_id` ngay khi user lấy số thứ tự.
