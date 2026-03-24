@@ -12,23 +12,41 @@
 
 ## 3. Issue Ticket Flow (FR-01, FR-02)
 ### 3.1 Main flow
-1. Client gửi yêu cầu tạo ticket với `request_id`, `queue_code`, `user_info`.
-2. Backend kiểm tra queue có active không.
-3. Backend kiểm tra `request_id` đã tồn tại trong `tickets` chưa.
-4. Nếu chưa tồn tại:
-   - Tăng counter Redis theo key `queue:{queue_id}:{yyyy-mm-dd}`.
-   - Ghi `tickets` với `queue_number` mới.
+1. Client gửi yêu cầu tạo ticket với `request_id`, `user_info`.
+2. Backend kiểm tra `request_id` đã tồn tại trong `tickets` chưa.
+3. Nếu chưa tồn tại:
+   - Tăng counter Redis theo key `queue:general:{yyyy-mm-dd}`.
+   - Ghi `tickets` với `general_queue_id`, `general_queue_number`, `routing_status = unrouted`.
    - Tạo `orders` trạng thái `draft` gắn `ticket_id`.
-5. Backend trả về `ticket_code`, `queue_position`, `order_id`.
+4. Backend trả về `ticket_code`, `general_queue_position`, `routing_status`, `order_id`.
 
 ### 3.2 Exception flow
-- Queue không tồn tại hoặc inactive -> trả `404/409`.
 - `request_id` đã tồn tại -> trả đúng ticket cũ (idempotent response, `200`).
 - Redis tăng counter thành công nhưng insert DB conflict -> retry cấp số tối đa N lần.
 - Quá N lần conflict -> trả `503`, không tạo ticket rỗng.
+- Request không phải channel kiosk hợp lệ -> `403`.
 
-### 3.3 State transitions (Ticket)
-- `created` (MVP chỉ cần trạng thái này trong bảng `tickets`; xử lý gọi số để phase sau).
+### 3.3 Routing flow (Operator)
+1. Operator gọi `PUT /tickets/{ticket_id}/routing` với `to_queue_code`, `operator_id`, `note` (optional).
+2. Backend lock theo `ticket_id` để tránh race condition khi route đồng thời.
+3. Backend kiểm tra queue đích tồn tại và active.
+4. Backend tăng counter Redis theo key `queue:clinic:{queue_id}:{yyyy-mm-dd}`.
+5. Backend cập nhật `tickets`:
+   - `clinic_queue_id`, `clinic_queue_number`
+   - `routing_status = routed`
+   - `routed_at`
+6. Backend ghi `ticket_routings` và `audit_logs` (from_queue, to_queue, operator_id, note).
+7. Backend trả về thông tin queue đích và `clinic_queue_number`.
+
+### 3.4 Routing exception flow
+- `ticket_id` không tồn tại -> `404`.
+- Queue đích không tồn tại/inactive -> `404/409`.
+- Payload route không hợp lệ (thiếu `to_queue_code`) -> `422`.
+- Route request gửi lặp từ UI -> xử lý idempotent theo `X-Request-Id` (khuyến nghị).
+
+### 3.5 State transitions (Ticket)
+- `unrouted` -> `routed`: đã điều hướng sang queue đích.
+- `routed` -> `routed`: re-route sang queue khác (cập nhật queue đích và cấp `clinic_queue_number` mới).
 
 ## 4. Information Lookup Flow (FR-03)
 ### 4.1 POI lookup
@@ -95,6 +113,7 @@
 
 ## 7. Idempotency Matrix
 - Create ticket: idempotent by `request_id`.
+- Route ticket: khuyến nghị idempotent by `X-Request-Id`.
 - Payment webhook: idempotent by `provider_event_id`.
 - Optional (khuyến nghị): create payment intent idempotent by `client_intent_key` để chống double-click.
 

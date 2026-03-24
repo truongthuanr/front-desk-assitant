@@ -63,8 +63,9 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 
 ## 4. Service Boundaries
 - Ticket Service:
-  - Tạo ticket theo khoa.
-  - Quản lý thứ tự queue theo ngày.
+  - Tạo ticket vào `general queue`.
+  - Điều hướng ticket sang queue khoa/phòng đích.
+  - Quản lý thứ tự queue theo ngày cho cả `general queue` và `clinic queue`.
   - Tạo `order` mặc định khi ticket được tạo.
 - Lookup Service:
   - Tra cứu POI.
@@ -78,10 +79,15 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 ## 5. Data Model (MVP)
 ### 5.1 Core tables
 - `queues`
-  - `id`, `code`, `name`, `is_active`
+  - `id`, `code`, `name`, `queue_type` (`general|clinic`), `is_active`
 - `tickets`
-  - `id`, `ticket_code`, `queue_id`, `queue_date`, `queue_number`
-  - `request_id` (idempotency), `user_ref`, `created_at`
+  - `id`, `ticket_code`, `queue_date`
+  - `general_queue_id`, `general_queue_number`
+  - `clinic_queue_id` (nullable), `clinic_queue_number` (nullable)
+  - `routing_status` (`unrouted|routed`), `routed_at` (nullable)
+  - `request_id` (idempotency), `subject_ref`, `created_at`, `updated_at`
+- `ticket_routings`
+  - `id`, `ticket_id`, `from_queue_id`, `to_queue_id`, `operator_id`, `note`, `created_at`
 - `orders`
   - `id`, `ticket_id`, `status`, `currency`, `total_amount`, `paid_amount`, `created_at`, `updated_at`
 - `order_items`
@@ -94,15 +100,33 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
   - `id`, `actor_type`, `actor_id`, `action`, `resource_type`, `resource_id`, `metadata_json`, `created_at`
 
 ### 5.2 Constraints and indexes
-- `tickets` unique: (`queue_id`, `queue_date`, `queue_number`).
+- `tickets` unique: (`general_queue_id`, `queue_date`, `general_queue_number`).
+- `tickets` unique (partial): (`clinic_queue_id`, `queue_date`, `clinic_queue_number`) khi `clinic_queue_id is not null`.
 - `tickets` unique: `request_id`.
 - `orders` unique: `ticket_id` (MVP: 1 ticket -> 1 order).
 - `payment_intents` unique: `intent_code`.
 - `payment_events` unique: `provider_event_id`.
 - Indexes:
-  - `tickets(queue_id, queue_date)`
+  - `tickets(general_queue_id, queue_date)`
+  - `tickets(routing_status, clinic_queue_id, queue_date)`
+  - `ticket_routings(ticket_id, created_at desc)`
   - `orders(status)`
   - `payment_intents(order_id, status)`
+
+### 5.3 DB vs Cache responsibilities
+- PostgreSQL (source of truth):
+  - Toàn bộ trạng thái ticket/queue (`general_queue_number`, `clinic_queue_number`, routing status).
+  - History route qua `ticket_routings` + audit logs.
+  - Dữ liệu payment/order và idempotency cần bền vững.
+- Redis (ephemeral/performance):
+  - Counter cấp số theo ngày:
+    - `queue:general:{yyyy-mm-dd}`
+    - `queue:clinic:{queue_id}:{yyyy-mm-dd}`
+  - Lock ngắn hạn chống race condition (`lock:ticket:create:{request_id}`, `lock:ticket:route:{ticket_id}`).
+  - OTP/session/rate-limit và cache read-heavy (POI/services/active queues).
+- Nguyên tắc:
+  - Cache mất không làm mất trạng thái nghiệp vụ.
+  - DB unique constraints là lớp chặn cuối cùng cho tính đúng đắn.
 
 ## 6. State Machines
 ### 6.1 Order state
@@ -120,9 +144,13 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 ## 7. API Design (Draft)
 ### 7.1 Ticket
 - `POST /api/v1/tickets`
-  - Input: `request_id`, `queue_code`, `user_info`, `operator_routing` (optional)
-  - Output: `ticket_code`, `queue_position`, `order_id`
+  - Input: `request_id`, `user_info`
+  - Output: `ticket_code`, `general_queue_number`, `routing_status`, `order_id`
   - Rule: idempotent theo `request_id`.
+- `PUT /api/v1/tickets/{ticket_id}/routing`
+  - Input: `to_queue_code`, `operator_id`, `note` (optional)
+  - Output: `clinic_queue_number`, `routing_status`, `routed_at`
+  - Rule: mỗi lần route/re-route sang queue mới cấp số mới theo queue đích.
 
 ### 7.2 Lookup
 - `GET /api/v1/lookup/poi?q=...`
@@ -142,11 +170,20 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 ### 8.1 Create ticket
 1. Client gửi `POST /tickets` kèm `request_id`.
 2. Backend check `request_id` đã tồn tại chưa.
-3. Nếu chưa có: tăng queue counter theo `queue_id + date`, tạo ticket.
+3. Nếu chưa có: tăng `general queue` counter theo ngày.
 4. Backend tạo `order` trạng thái `draft` cho ticket.
-5. Trả ticket + order về client.
+5. Persist ticket vào Postgres với `routing_status = unrouted`.
+6. Trả ticket + order về client.
 
-### 8.2 Add service and pay
+### 8.2 Route ticket to clinic queue
+1. Operator gửi `PUT /tickets/{ticket_id}/routing`.
+2. Backend lock theo `ticket_id`, kiểm tra queue đích active.
+3. Backend tăng counter queue đích theo ngày.
+4. Cập nhật `clinic_queue_id`, `clinic_queue_number`, `routing_status = routed`, `routed_at`.
+5. Ghi `ticket_routings` + `audit_logs`.
+6. Trả thông tin queue đích đã route.
+
+### 8.3 Add service and pay
 1. Operator/backend thêm `order_item` vào order.
 2. Backend chuyển order `draft -> open` (nếu cần), tính lại tiền.
 3. User bấm thanh toán, backend tạo `payment_intent (pending)`.
@@ -157,10 +194,13 @@ Tài liệu này mô tả thiết kế kỹ thuật để triển khai scope MVP
 
 ## 9. Concurrency, Idempotency, Reliability
 - Queue counter:
-  - Dùng Redis atomic increment theo key `queue:{queue_id}:{yyyy-mm-dd}`.
-  - Commit ticket vào Postgres với unique constraint để chặn race condition.
+  - Dùng Redis atomic increment theo key:
+    - `queue:general:{yyyy-mm-dd}`
+    - `queue:clinic:{queue_id}:{yyyy-mm-dd}`
+  - Commit ticket/routing vào Postgres với unique constraints để chặn race condition.
 - Idempotency keys:
   - `tickets.request_id` cho tạo ticket.
+  - `X-Request-Id` (khuyến nghị) cho `PUT /tickets/{ticket_id}/routing`.
   - `provider_event_id` cho webhook payment.
 - Retry policy:
   - Webhook xử lý theo at-least-once; event trùng phải return 200.
