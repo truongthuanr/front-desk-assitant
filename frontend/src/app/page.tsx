@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const serviceCards = [
-  { id: "issue-ticket", title: "Dang ky\nkham benh", icon: "🗓️", primary: true },
-  { title: "Tra cuu\nlich hen", icon: "🕒" },
-  { title: "So do\nbenh vien", icon: "📍" },
-  { title: "Giai dap\nthac mac", icon: "🎙️" },
+  { id: "issue-ticket", title: "ĐĂNG KÝ\nKHÁM BỆNH", icon: "🗓️", primary: true },
+  { title: "TRA CỨU\nLỊCH HẸN", icon: "🕒" },
+  { title: "SƠ ĐỒ\nBỆNH VIỆN", icon: "📍" },
+  { title: "GIẢI ĐÁP\nTHẮC MẮC", icon: "🎙️", primary: true },
 ];
 const ROBOT_ASSET_VERSION = "20260325-1";
 
@@ -41,19 +41,19 @@ export default function HomePage() {
             <p className="brand-text">Hospital Assistant</p>
           </div>
           <h1 className="headline">
-            Xin chao!
+            Xin chào!
             <br />
-            Toi co the giup
+            Tôi có thể giúp
             <br />
-            gi cho ban
+            gì cho bạn
             <br />
-            hom nay?
+            hôm nay?
           </h1>
         </aside>
 
         <section className="right-panel" aria-label="Main services">
           <header className="hero">
-            <p className="bubble">Hay chon dich vu hoac tro chuyen voi toi.</p>
+            <p className="bubble">Hãy chọn dịch vụ hoặc trò chuyện với tôi.</p>
             <Image
               src={`/assets/robot.png?v=${ROBOT_ASSET_VERSION}`}
               alt="Hospital assistant robot"
@@ -91,13 +91,13 @@ export default function HomePage() {
 
           <div className="quick-actions">
             <Button type="button" variant="secondary" className="pill">
-              💬 Tro chuyen truc tiep
+              💬 Trò chuyện trực tiếp
             </Button>
             <Button type="button" variant="secondary" className="pill">
-              🌐 Ngon ngu
+              🌐 Ngôn ngữ
             </Button>
             <Button type="button" variant="destructive" className="pill emergency">
-              📞 Ho tro khan cap
+              📞 Hỗ trợ khẩn cấp
             </Button>
           </div>
 

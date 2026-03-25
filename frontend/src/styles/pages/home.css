@@ -287,38 +287,66 @@
 
   .right-panel {
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto auto auto;
     min-height: 0;
-    gap: clamp(14px, 1.8vh, 22px);
+    gap: clamp(14px, 2.2vh, 24px);
+    align-content: start;
+    overflow: visible;
   }
 
   .hero {
-    min-height: 0;
-    align-items: center;
+    position: relative;
+    min-height: clamp(260px, 40vh, 400px);
+    align-items: flex-start;
+    overflow: visible;
+  }
+
+  .bubble {
+    margin: 2px 0 0;
+    max-width: clamp(360px, 38vw, 560px);
+    font-size: clamp(1.8rem, 2.2vw, 2.9rem);
+    padding: clamp(18px, 2.2vh, 24px) clamp(22px, 2.2vw, 30px);
+    border-radius: 24px;
+    line-height: 1.06;
+    position: relative;
+    z-index: 2;
   }
 
   .robot {
+    position: absolute;
+    right: clamp(14px, 2.5vw, 38px);
+    bottom: clamp(-110px, -8vh, -62px);
     width: auto;
-    height: clamp(180px, 31vh, 300px);
-    max-width: 42%;
+    height: clamp(390px, 62vh, 620px);
+    max-width: none;
+    z-index: 3;
   }
 
   .service-grid {
-    flex: 1;
     min-height: 0;
-    grid-auto-rows: 1fr;
-    align-content: stretch;
+    grid-auto-rows: minmax(0, 1fr);
+    position: relative;
+    z-index: 1;
+    margin-top: 2px;
   }
 
   .service-card,
   .service-card-button {
-    min-height: 0;
+    min-height: clamp(160px, 23vh, 240px);
     height: 100%;
   }
 
   .service-card-button {
-    padding: clamp(10px, 1.5vh, 18px) 10px;
+    padding: clamp(12px, 1.8vh, 18px) 10px;
     gap: clamp(6px, 1vh, 10px);
+  }
+
+  .service-title {
+    font-size: clamp(1.45rem, 1.55vw, 1.85rem);
+  }
+
+  .quick-actions {
+    margin-top: -2px;
   }
 }
 
