@@ -4,6 +4,7 @@
 @import "../styles/tokens.css";
 @import "../styles/base.css";
 @import "../styles/pages/home.css";
+@import "../styles/pages/issue-ticket.css";
 
 @custom-variant dark (&:is(.dark *));
 

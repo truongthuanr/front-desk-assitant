@@ -1,0 +1,128 @@
+.issue-ticket-shell {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: linear-gradient(140deg, #e6f2eb 0%, #f8fcf8 45%, #e9f5ef 100%);
+}
+
+.issue-ticket-card {
+  width: min(760px, 100%);
+  border-radius: 24px;
+  padding: clamp(20px, 4vw, 30px);
+  background: rgba(246, 251, 248, 0.95);
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(73, 97, 101, 0.18);
+  display: grid;
+  gap: 18px;
+}
+
+.issue-ticket-header h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.issue-ticket-header p {
+  margin: 8px 0 0;
+  color: #3d575b;
+  font-weight: 600;
+}
+
+.issue-ticket-form {
+  display: grid;
+  gap: 14px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field span {
+  font-weight: 700;
+  color: #365154;
+}
+
+.field input {
+  border: 1px solid rgba(73, 97, 101, 0.28);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  color: #122123;
+}
+
+.field input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.issue-ticket-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.confirm-btn {
+  min-height: 44px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.back-btn {
+  min-height: 44px;
+  border: 1px solid rgba(73, 97, 101, 0.4);
+  border-radius: 12px;
+  color: #1c2f31;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.back-btn:hover {
+  background: rgba(154, 212, 182, 0.25);
+}
+
+.issue-ticket-error {
+  margin: 0;
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.issue-ticket-result {
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(73, 97, 101, 0.18);
+}
+
+.issue-ticket-result h2 {
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+}
+
+.issue-ticket-result p {
+  margin: 6px 0;
+}
+
+@media (max-width: 640px) {
+  .issue-ticket-shell {
+    padding: 0;
+  }
+
+  .issue-ticket-card {
+    min-height: 100svh;
+    border-radius: 0;
+    border: 0;
+  }
+
+  .issue-ticket-actions {
+    grid-template-columns: 1fr;
+  }
+}

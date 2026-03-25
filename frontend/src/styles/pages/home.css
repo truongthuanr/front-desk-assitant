@@ -8,7 +8,6 @@
 .home-canvas {
   width: 100%;
   height: 100%;
-  /* min-height: min(760px, calc(100svh - 32px)); */
   background: linear-gradient(130deg, #e7f3ee 0%, #f8fcf8 50%, #eaf5ef 100%);
   border-radius: 30px;
   box-shadow: var(--shadow);
@@ -273,6 +272,54 @@
 .pill.emergency {
   background: var(--accent);
   color: #fff;
+}
+
+@media (min-width: 1121px) {
+  .home-shell {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .home-canvas {
+    height: calc(100dvh - 32px);
+    overflow: hidden;
+  }
+
+  .right-panel {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    min-height: 0;
+    gap: clamp(14px, 1.8vh, 22px);
+  }
+
+  .hero {
+    min-height: 0;
+    align-items: center;
+  }
+
+  .robot {
+    width: auto;
+    height: clamp(180px, 31vh, 300px);
+    max-width: 42%;
+  }
+
+  .service-grid {
+    flex: 1;
+    min-height: 0;
+    grid-auto-rows: 1fr;
+    align-content: stretch;
+  }
+
+  .service-card,
+  .service-card-button {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .service-card-button {
+    padding: clamp(10px, 1.5vh, 18px) 10px;
+    gap: clamp(6px, 1vh, 10px);
+  }
 }
 
 @media (max-width: 1120px) {

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -11,73 +11,10 @@ const serviceCards = [
   { title: "So do\nbenh vien", icon: "📍" },
   { title: "Giai dap\nthac mac", icon: "🎙️" },
 ];
-
-type TicketResponse = {
-  ticket_code: string;
-  general_queue: {
-    queue_name: string;
-    queue_number: number;
-    queue_position: number;
-  };
-  routing: {
-    status: string;
-  };
-  order: {
-    order_id: string;
-  };
-  created_at: string;
-};
+const ROBOT_ASSET_VERSION = "20260325-1";
 
 export default function HomePage() {
-  const [phone, setPhone] = useState("0900000000");
-  const [isIssuing, setIsIssuing] = useState(false);
-  const [issueError, setIssueError] = useState<string | null>(null);
-  const [ticket, setTicket] = useState<TicketResponse | null>(null);
-
-  const apiBaseUrl = useMemo(
-    () => process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000",
-    []
-  );
-
-  async function handleIssueTicket() {
-    setIssueError(null);
-    setIsIssuing(true);
-
-    const requestId = `req_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/v1/tickets`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Request-Id": requestId,
-        },
-        body: JSON.stringify({
-          request_id: requestId,
-          user_info: {
-            name: "Guest User",
-            phone: phone.trim(),
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        const errorPayload = (await response.json().catch(() => null)) as
-          | { detail?: string }
-          | null;
-        throw new Error(errorPayload?.detail ?? `REQUEST_FAILED_${response.status}`);
-      }
-
-      const data = (await response.json()) as TicketResponse;
-      setTicket(data);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Khong the tao ticket luc nay";
-      setIssueError(message);
-    } finally {
-      setIsIssuing(false);
-    }
-  }
+  const router = useRouter();
 
   return (
     <main className="home-shell">
@@ -117,7 +54,14 @@ export default function HomePage() {
         <section className="right-panel" aria-label="Main services">
           <header className="hero">
             <p className="bubble">Hay chon dich vu hoac tro chuyen voi toi.</p>
-            <Image src="/assets/robot.png" alt="Hospital assistant robot" width={320} height={420} className="robot" />
+            <Image
+              src={`/assets/robot.png?v=${ROBOT_ASSET_VERSION}`}
+              alt="Hospital assistant robot"
+              width={320}
+              height={420}
+              className="robot"
+              unoptimized
+            />
           </header>
 
           <div className="service-grid">
@@ -130,11 +74,10 @@ export default function HomePage() {
                   type="button"
                   variant="ghost"
                   className="service-card-button"
-                  disabled={isIssuing && card.id === "issue-ticket"}
                   onClick={
                     card.id === "issue-ticket"
-                      ? handleIssueTicket
-                      : () => setIssueError("Tinh nang nay dang duoc cap nhat")
+                      ? () => router.push("/issue-ticket")
+                      : () => window.alert("Tinh nang nay dang duoc cap nhat")
                   }
                 >
                   <span className="service-icon" aria-hidden="true">
@@ -158,43 +101,6 @@ export default function HomePage() {
             </Button>
           </div>
 
-          <Card className="ticket-result">
-            <div className="ticket-result-header">
-              <p className="ticket-result-title">Lay so thu tu</p>
-              <label className="ticket-phone">
-                <span>So dien thoai</span>
-                <input
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="Nhap so dien thoai"
-                />
-              </label>
-            </div>
-
-            {isIssuing && <p className="ticket-result-hint">Dang tao ticket...</p>}
-
-            {!isIssuing && issueError && <p className="ticket-result-error">{issueError}</p>}
-
-            {!isIssuing && !issueError && ticket && (
-              <div className="ticket-result-data">
-                <p>
-                  Ma so: <strong>{ticket.ticket_code}</strong>
-                </p>
-                <p>
-                  Queue: <strong>{ticket.general_queue.queue_name}</strong>
-                </p>
-                <p>
-                  So thu tu: <strong>{ticket.general_queue.queue_number}</strong>
-                </p>
-                <p>
-                  Vi tri hien tai: <strong>{ticket.general_queue.queue_position}</strong>
-                </p>
-                <p>
-                  Routing: <strong>{ticket.routing.status}</strong>
-                </p>
-              </div>
-            )}
-          </Card>
         </section>
       </section>
     </main>
