@@ -2,105 +2,110 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import type { ReactNode } from "react";
+import {
+  CalendarDays,
+  CircleHelp,
+  Clock3,
+  Globe2,
+  MapPinned,
+  MessageCircleMore,
+  MicVocal,
+  Phone,
+} from "lucide-react";
 
-const serviceCards = [
-  { id: "issue-ticket", title: "ĐĂNG KÝ\nKHÁM BỆNH", icon: "🗓️", primary: true },
-  { title: "TRA CỨU\nLỊCH HẸN", icon: "🕒" },
-  { title: "SƠ ĐỒ\nBỆNH VIỆN", icon: "📍" },
-  { title: "GIẢI ĐÁP\nTHẮC MẮC", icon: "🎙️", primary: true },
+type Action = "issue-ticket" | "coming-soon";
+
+type ServiceItem = {
+  id: string;
+  title: string;
+  accent: "green" | "beige";
+  icon: ReactNode;
+  action: Action;
+};
+
+const services: ServiceItem[] = [
+  { id: "register", title: "Đăng ký\nkhám bệnh", accent: "beige", icon: <CalendarDays size={48} />, action: "issue-ticket" },
+  { id: "appointment", title: "Tra cứu\nlịch hẹn", accent: "green", icon: <Clock3 size={48} />, action: "coming-soon" },
+  { id: "map", title: "Sơ đồ\nbệnh viện", accent: "green", icon: <MapPinned size={48} />, action: "coming-soon" },
+  {
+    id: "faq",
+    title: "Giải đáp\nthắc mắc",
+    accent: "beige",
+    icon: (
+      <span className="faq-icon" aria-hidden="true">
+        <CircleHelp size={40} />
+        <MicVocal size={32} />
+      </span>
+    ),
+    action: "coming-soon",
+  },
 ];
-const ROBOT_ASSET_VERSION = "20260325-1";
 
 export default function HomePage() {
   const router = useRouter();
 
+  const handleAction = (action: Action) => {
+    if (action === "issue-ticket") {
+      router.push("/issue-ticket");
+      return;
+    }
+    window.alert("Tính năng này đang được cập nhật");
+  };
+
   return (
     <main className="home-shell">
-      <section className="home-canvas">
-        <Image
-          src="/assets/leaf.png"
-          alt=""
-          width={480}
-          height={320}
-          className="leaf leaf-top"
-          priority
-        />
-        <Image
-          src="/assets/leaf.png"
-          alt=""
-          width={430}
-          height={280}
-          className="leaf leaf-bottom"
-        />
+      <section className="home-canvas" aria-label="Hospital Assistant Home">
+        <Image src="/assets/leaf.png" alt="" width={620} height={420} className="leaf leaf-top" priority />
+        <Image src="/assets/leaf.png" alt="" width={620} height={420} className="leaf leaf-bottom" />
 
         <aside className="left-panel">
           <div className="brand">
-            <Image src="/assets/logo.png" alt="Hospital Assistant logo" width={72} height={72} />
-            <p className="brand-text">Hospital Assistant</p>
+            <Image src="/assets/logo.png" alt="Hospital Assistant logo" width={84} height={84} />
+            <div className="brand-copy">
+              <p>Hospital</p>
+              <p>Assistant</p>
+            </div>
           </div>
-          <h1 className="headline">
-            Xin chào!
-            <br />
-            Tôi có thể giúp
-            <br />
-            gì cho bạn
-            <br />
-            hôm nay?
-          </h1>
+          <h1 className="headline">Xin chào! Tôi có thể giúp gì cho bạn hôm nay?</h1>
         </aside>
 
-        <section className="right-panel" aria-label="Main services">
+        <section className="right-panel">
           <header className="hero">
             <p className="bubble">Hãy chọn dịch vụ hoặc trò chuyện với tôi.</p>
-            <Image
-              src={`/assets/robot.png?v=${ROBOT_ASSET_VERSION}`}
-              alt="Hospital assistant robot"
-              width={320}
-              height={420}
-              className="robot"
-              unoptimized
-            />
+            <div className="robot-wrap">
+              <Image src="/assets/robot.png" alt="Hospital assistant robot" width={460} height={460} className="robot" />
+            </div>
           </header>
 
           <div className="service-grid">
-            {serviceCards.map((card) => (
-              <Card
-                key={card.title}
-                className={`service-card ${card.primary ? "service-card-primary" : ""}`}
+            {services.map((service) => (
+              <button
+                key={service.id}
+                type="button"
+                className={`service-card ${service.accent === "beige" ? "service-card-beige" : "service-card-green"}`}
+                onClick={() => handleAction(service.action)}
               >
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="service-card-button"
-                  onClick={
-                    card.id === "issue-ticket"
-                      ? () => router.push("/issue-ticket")
-                      : () => window.alert("Tinh nang nay dang duoc cap nhat")
-                  }
-                >
-                  <span className="service-icon" aria-hidden="true">
-                    {card.icon}
-                  </span>
-                  <span className="service-title">{card.title}</span>
-                </Button>
-              </Card>
+                <span className="service-icon">{service.icon}</span>
+                <span className="service-title">{service.title}</span>
+              </button>
             ))}
           </div>
 
           <div className="quick-actions">
-            <Button type="button" variant="secondary" className="pill">
-              💬 Trò chuyện trực tiếp
-            </Button>
-            <Button type="button" variant="secondary" className="pill">
-              🌐 Ngôn ngữ
-            </Button>
-            <Button type="button" variant="destructive" className="pill emergency">
-              📞 Hỗ trợ khẩn cấp
-            </Button>
+            <button type="button" className="quick-pill" onClick={() => handleAction("coming-soon")}>
+              <MessageCircleMore size={27} />
+              Trò chuyện trực tiếp
+            </button>
+            <button type="button" className="quick-pill" onClick={() => handleAction("coming-soon")}>
+              <Globe2 size={27} />
+              Ngôn ngữ
+            </button>
+            <button type="button" className="quick-pill emergency" onClick={() => handleAction("coming-soon")}>
+              <Phone size={27} />
+              Hỗ trợ khẩn cấp
+            </button>
           </div>
-
         </section>
       </section>
     </main>
