@@ -147,14 +147,75 @@ Errors
 - `GET /orders/{order_id}`
 - `POST /payments/webhook`
 
-## 8. Status Enums
+## 8. Google Sign-in & Phone Link APIs
+### 8.1 Start Google OAuth
+- `GET /auth/google/start`
+- Auth: public
+
+Success `302`
+- Redirect tới Google OAuth consent screen.
+
+Errors
+- `503 OIDC_PROVIDER_UNAVAILABLE`
+
+### 8.2 Google OAuth callback
+- `GET /auth/google/callback`
+- Auth: public (OIDC redirect)
+
+Success `302`
+- Sign-in thành công và phone đã linked: redirect `S02`.
+- Sign-in thành công nhưng chưa linked phone: redirect `S01A`.
+
+Errors
+- `401 OIDC_INVALID_STATE`
+- `401 OIDC_INVALID_CODE`
+- `401 OIDC_ID_TOKEN_INVALID`
+
+### 8.3 Link phone vào user hiện tại
+- `POST /identity/phone/link`
+- Auth: Bearer token (session Google đã đăng nhập)
+
+Request
+```json
+{
+  "phone": "0900000000",
+  "otp_verify_token": "ovt_xxx"
+}
+```
+
+Rules
+- `otp_verify_token` phải được tạo từ `POST /auth/otp/verify` với `purpose = link_phone`.
+- Một phone active chỉ được linked với một `user_ref`.
+
+Success `200`
+```json
+{
+  "user_ref": "usr_01",
+  "phone": "0900000000",
+  "linked": true
+}
+```
+
+Errors
+- `401 UNAUTHORIZED`
+- `401 OTP_REQUIRED`
+- `401 OTP_EXPIRED`
+- `422 OTP_PURPOSE_MISMATCH`
+- `409 PHONE_ALREADY_LINKED`
+
+### 8.4 OTP purpose cho link phone
+- `POST /auth/otp/send` với body `purpose = link_phone`
+- `POST /auth/otp/verify` với body `purpose = link_phone`
+
+## 9. Status Enums
 - `order.status`: `draft`, `open`, `partially_paid`, `paid`, `cancelled`
 - `payment_intent.status`: `pending`, `success`, `failed`, `expired`
 - `ticket.routing.status`: `unrouted`, `routed`
 
-## 9. Idempotency Rules
+## 10. Idempotency Rules
 - `POST /tickets`: idempotent theo `request_id`.
 - `POST /tickets`: `otp_verify_token` bắt buộc hợp lệ cho `issue_ticket`.
 - `PUT /tickets/{ticket_id}/routing`: khuyến nghị idempotent theo `X-Request-Id`.
 - `POST /payments/webhook`: idempotent theo `provider_event_id`.
 - `POST /orders/{order_id}/payment-intents`: idempotent mềm theo `X-Idempotency-Key`.
+- `POST /identity/phone/link`: khuyến nghị idempotent theo `X-Request-Id`.

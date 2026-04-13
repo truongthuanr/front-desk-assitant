@@ -3,7 +3,7 @@
 ## 1. Shared Rules
 - Timezone theo bệnh viện.
 - API ghi dữ liệu bắt buộc có `request_id` hoặc idempotency key phù hợp.
-- OTP phải tách purpose (`issue_ticket`, `ticket_lookup`) và không dùng chéo.
+- OTP phải tách purpose (`issue_ticket`, `ticket_lookup`, `link_phone`) và không dùng chéo.
 
 ## 2. Feature: Issue Ticket
 - Implements: `FR-01`
@@ -137,3 +137,47 @@
 - `POST /orders/{order_id}/payment-intents`
 - `GET /orders/{order_id}`
 - `POST /payments/webhook`
+
+## 7. Feature: Google Sign-In And Phone Linking
+- Implements: `FR-06`
+
+### 7.1 Service Spec
+- Google Sign-In (OIDC Authorization Code + PKCE):
+  1. Client khởi tạo login và nhận `authorize_url` + `state` + `code_challenge`.
+  2. User consent trên Google và callback về backend với `code`.
+  3. Backend đổi `code` lấy token, validate `ID Token` (`iss`, `aud`, `exp`, nonce nếu có).
+  4. Resolve identity theo `google_sub`:
+     - Đã tồn tại -> reuse `user_ref`.
+     - Chưa tồn tại -> tạo `user_ref` mới (chưa linked phone).
+- Phone linking:
+  1. User đang có session Google gửi OTP tới phone (purpose `link_phone`).
+  2. Verify OTP thành công -> link phone vào `user_ref` hiện tại.
+  3. Nếu phone đã thuộc `user_ref` khác -> trả conflict, không auto-merge.
+- Security/consistency:
+  - Một phone active chỉ map một `user_ref`.
+  - Audit log cho `google_sign_in`, `phone_linked`, `phone_unlinked`, `phone_link_conflict`.
+  - Các thao tác nhạy cảm (`issue_ticket`, `ticket_lookup`) yêu cầu phone đã verify/linked.
+- Exceptions:
+  - OIDC callback sai `state`/invalid code -> `401`.
+  - `ID Token` invalid -> `401`.
+  - Phone conflict khi link -> `409`.
+  - OTP thiếu/hết hạn/sai purpose `link_phone` -> `401/422`.
+
+### 7.2 UI Spec
+- Screens: `S01 - Sign In`, `S01A - Link Phone`.
+- Components:
+  - CTA `Sign in with Google`.
+  - Trạng thái login (`loading`, `cancelled`, `failed`).
+  - Form phone + OTP block (`Gửi OTP`, `Xác thực OTP`, resend countdown).
+- CTA and redirect:
+  - Google sign-in thành công và đã linked phone -> vào `S02`.
+  - Google sign-in thành công nhưng chưa linked phone -> chuyển `S01A`.
+  - Link phone thành công -> vào `S02`.
+  - Link conflict -> hiển thị lỗi, giữ `S01A`.
+
+### 7.3 Interface Mapping
+- `GET /auth/google/start`
+- `GET /auth/google/callback`
+- `POST /auth/otp/send` (purpose `link_phone`)
+- `POST /auth/otp/verify` (purpose `link_phone`)
+- `POST /identity/phone/link`

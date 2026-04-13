@@ -25,6 +25,8 @@ Quy trình tiếp nhận tại quầy hiện tốn thời gian, dễ ùn tắc, 
 ### 4.1 In Scope
 - Issue ticket tại kiosk.
 - OTP verify theo phone trước khi create ticket.
+- Sign in bằng Google (OIDC) cho guest flow.
+- Liên kết Google account với phone đã verify OTP.
 - Identity guest theo `user_ref` (reuse theo phone đã verify).
 - Ticket lookup public bằng `ticket_code + phone + OTP`.
 - Information lookup cho POI/service.
@@ -38,9 +40,20 @@ Quy trình tiếp nhận tại quầy hiện tốn thời gian, dễ ùn tắc, 
 ## 5. Identity Model (MVP)
 - Guest không cần đăng ký account đầy đủ.
 - User phải verify OTP phone cho các flow cần xác thực.
-- `user_ref` resolve theo phone đã verify:
-  - Phone đã tồn tại -> reuse `user_ref`.
-  - Phone mới -> tạo `user_ref` mới.
+- Hỗ trợ định danh qua 2 credential:
+  - `phone` (qua OTP verify).
+  - `google_sub` (từ ID Token OIDC sau Google Sign-In).
+- Quy tắc resolve `user_ref`:
+  - Có phone đã verify:
+    - Phone đã tồn tại -> reuse `user_ref`.
+    - Phone mới -> tạo `user_ref` mới.
+  - Có `google_sub`:
+    - `google_sub` đã tồn tại -> reuse `user_ref`.
+    - `google_sub` mới -> tạo `user_ref` mới (trạng thái chưa linked phone).
+- Quy tắc linking Google <-> Phone:
+  - Nếu user đã sign in Google và verify OTP phone thành công:
+    - Phone chưa gắn `user_ref` khác -> link vào `user_ref` hiện tại.
+    - Phone đang thuộc `user_ref` khác -> từ chối auto-merge, yêu cầu xử lý thủ công theo policy vận hành.
 - `subject_ref = user_ref` cho `ticket`, `order`, `payment_intent`.
 
 ## 6. Functional Requirements
@@ -69,6 +82,13 @@ Quy trình tiếp nhận tại quầy hiện tốn thời gian, dễ ùn tắc, 
 - OTP lookup tách purpose với OTP issue ticket.
 - OTP 6 chữ số, TTL <= 3 phút, giới hạn sai và resend.
 
+### FR-06 Google Sign-In And Phone Linking
+- Hỗ trợ `Sign in with Google` theo OIDC Authorization Code + PKCE.
+- Backend validate `ID Token` (issuer, audience, expiry) và lấy `google_sub` làm định danh ổn định.
+- Khi Google account chưa có phone linked, hệ thống yêu cầu verify OTP phone trước các thao tác nhạy cảm (issue ticket, lookup ticket).
+- Cho phép link phone sau khi OTP verify; lưu audit log cho mọi thao tác link/unlink.
+- Không cho phép một phone active đồng thời gắn với nhiều `user_ref`.
+
 ## 7. Non-Functional Requirements
 - Availability: 99.5% (production target).
 - Security: dữ liệu nhạy cảm bảo vệ khi truyền; audit đầy đủ cho action quan trọng.
@@ -77,5 +97,7 @@ Quy trình tiếp nhận tại quầy hiện tốn thời gian, dễ ùn tắc, 
 ## 8. Acceptance Criteria
 - Tạo ticket ổn định, không trùng do retry.
 - Cùng phone đã verify map về cùng `user_ref`.
+- Cùng `google_sub` map về cùng `user_ref`.
+- Google account có thể link phone qua OTP và tái sử dụng `user_ref` nhất quán.
 - Flow OTP cho issue ticket và ticket lookup hoạt động độc lập theo purpose.
 - Order/payment liên kết đúng `subject_ref` của ticket.
